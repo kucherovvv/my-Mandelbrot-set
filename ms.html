@@ -1,26 +1,58 @@
-<!DOCTYPE html>
+
 <html>
 <head>
-	<title>Mandelbrot set</title>
+	<title>Mandelbrot/Julia set visualizer</title>
 	<style>
 		body {
-			margin:0px;
-			text-align: center;
-			font-family: monospace;
+		  margin:0px;
+		  text-align: center;
+		  font-family: monospace;
 		}
 		#span-ting {
-			position:absolute;
-			color:white;
-			padding:5px 10px;
+		  position:absolute;
+		  color:white;
+		  padding:5px 10px;
+		  text-align:left;
+		}
+		kbd {
+		  border:1px solid #333;
+		  border-radius:5px;
+		  padding:3px;
+		  margin:3px;
+		  box-shadow:0px 3px 0px #333;
 		}
 	</style>
-	<script>
-		function mycolor(r,g,b,pct) {
+	<script src="parallel.js"></script>
+</head>
+<body>
+
+		<span id="span-ting"><span>drawtime: <span id="span-drawtime">-</span>ms</span><br><span>iter: <span id="span-iter">-</span></span></span>
+		<canvas id='canv'>an old browser you're using...</canvas>
+    <h1 style="margin-bottom:0px">Mandelbrot/Julia set visualizer</h1>
+<p style="margin-top:-5px"> <b>**the thing works faster in full page**</b></p>
+    <div class="keys">
+      <h3>Keys:</h3>
+      <p><kbd>LMB</kbd> - drag</p>
+      <p><kbd>Wheel ↕</kbd> - scale</p>
+      <p><kbd>RMB down</kbd> - show Julia set for point under cursor</p>
+      <h3>Other:</h3>
+      <p><kbd>Alt</kbd>+<kbd>Wheel ↕</kbd> - +/-1 number of iterations</p>
+      <p><kbd>Shift</kbd>+<kbd>Alt</kbd>+<kbd>Wheel ↕</kbd> - +/-10 number of iterations</p>
+      
+      <p><kbd>Ctrl</kbd>+<kbd>RMB</kbd> - change color mode (gradient, hsv, grayscale, red, green, blue)</p>
+      
+    </div>
+
+
+
+
+    <script>
+    	function mycolor(r,g,b,pct) {
 			return{r:r,g:g,b:b,pct:pct};
 		}
 		let gar = [//mycolor(41,137,204,0),
 			mycolor(0,0,52,0),
-			mycolor(0,0,52,.1),
+			// mycolor(0,0,52,.1),
 			mycolor(89,163,255,.4),
 			mycolor(255,255,255,.5),
 			mycolor(144,106,0,.52),
@@ -78,24 +110,22 @@
 			
 			return obj;
 		}
-	</script>
-</head>
-<body>
 
-		<span id="span-ting">draw-time: <span id="span-drawtime">wre</span>ms</span>
-		<canvas id='canv'>Обновите браузер</canvas>
-		<script>
-			let canv = document.getElementById("canv"),
+
+//--- main code -----
+let canv = document.getElementById("canv"),
 			    ctx     = canv.getContext('2d'),
 			    w = 500,
 			    h = w,
-			    span_drawtime = document.getElementById("span-drawtime");
+			    span_drawtime = document.getElementById("span-drawtime"),
+          span_iter = document.getElementById("span-iter");
 			canv.width  = w;
 			canv.height = h;
 
 			const MAX_ITER = 1000;
 			let N = 1e4,
 				nIter = 150;
+      span_iter.innerHTML = nIter;
 
 			let juliaCa,juliaCb;
 
@@ -142,14 +172,17 @@
 						for (n = 0; n < nIter; n++) {
 							let aa = a*a-b*b;
 							let bb = 2*a*b;
+							// let aa = a*a*a-3*a*b*b;
+							// let bb = 3*a*a*b-b*b*b;
 
 							a = aa + ca;
 							b = bb + cb;
 
-							// if (a == aa && b == bb) {
-							// 	n = nIter;
-							// 	break;
-							// }
+							// aa = a*a-b*b;
+							// bb = 2*a*b;
+
+							// a = aa + ca;
+							// b = bb + cb;
 
 							if (a*a+b*b > 4) {
 								break;
@@ -157,9 +190,10 @@
 						}
 
 						if (colorMode===0) {
-							let hue = map(n,0,nIter,0,360/*-(Math.sin(t)+1)*.1*360*/), sat = 1, val = 1;
-							if (n === nIter) {
-								sat = 0;
+							let hue = map(n,0,nIter,0,1), sat = 1, val = 1;
+							hue = map(Math.sqrt(hue),0,1,0,360);
+              if (n === nIter) {
+								val = 0;
 							}
 
 							hsv2rgb(hue,sat,val,tmp);
@@ -168,7 +202,7 @@
 							d[idx+2] = tmp.b;
 							d[idx+3] = 255;
 						} else if (colorMode >= 1 && colorMode <= 4) {
-							let br = map(n,0,nIter,0,1/*-(Math.sin(t)+1)*.1*/);
+							let br = map(n,0,nIter,0,1);
 							br = map(Math.sqrt(br),0,1,0,255);
 							if (n === nIter) {
 								br = 0;
@@ -192,9 +226,6 @@
 								tmp = {r:0,g:0,b:0};
 							} else {
 								
-								// let log_zn = Math.log( a*a + b*b ) / 2,
-								// 	nu = Math.log( log_zn / Math.log(2) ) / Math.log(2);
-
 								let t = map(n/*+nu*/,0,nIter,0,1);
 									// t = Math.sqrt(t);
 
@@ -226,41 +257,42 @@
 
 			let tmp = {};
 			canv.addEventListener("mousewheel",(ev)=>{
-				let dx = ev.wheelDeltaX,
-					dy = ev.wheelDeltaY;
+				let dy = ev.wheelDeltaY;
 				localizeMouseCoords(ev,canv,tmp);
 
-				let step = ev.shiftKey * 9 + 1;
+				
 
-				if (dx > 0) {
-					nIter = Math.max(nIter-step, 1);
-				} else if (dx < 0) {
-					nIter = Math.min(nIter+step, MAX_ITER);
-				}
-				// console.log("Iter:",nIter)
-
-
-				let ww = bRight - bLeft, 
-					wh = bTop - bBottom,
-					cx = -map(tmp.clientX,0,w,-1,1),
-					cy = map(tmp.clientY,0,h,-1,1);
-					console.log(ww+'  x  '+wh);
-				let dTop = ww*stepScale * (1+cy),
-					dBottom = -ww*stepScale * (1-cy),
-					dRight = wh*stepScale * (1+cx),
-					dLeft = -wh*stepScale * (1-cx);
-				if (dy > 0) {
-					bTop -=dTop;
-					bBottom -=dBottom;
-					bRight -=dRight;
-					bLeft -=dLeft;
-				} else if (dy < 0) {
-					bTop +=dTop;
-					bBottom +=dBottom;
-					bRight +=dRight;
-					bLeft +=dLeft;
-				}
-
+        if (ev.altKey) { // change iterations number
+          let step = ev.shiftKey * 9 + 1;
+          if (dy < 0) {
+            nIter = Math.max(nIter-step, 1);
+          } else if (dy > 0) {
+            nIter = Math.min(nIter+step, MAX_ITER);
+          }
+          span_iter.innerHTML = nIter;
+          
+        } else { // change scale
+          let ww = bRight - bLeft, 
+            wh = bTop - bBottom,
+            cx = -map(tmp.clientX,0,w,-1,1),
+            cy = map(tmp.clientY,0,h,-1,1);
+            console.log(ww+'  x  '+wh);
+          let dTop = ww*stepScale * (1+cy),
+            dBottom = -ww*stepScale * (1-cy),
+            dRight = wh*stepScale * (1+cx),
+            dLeft = -wh*stepScale * (1-cx);
+          if (dy > 0) {
+            bTop -=dTop;
+            bBottom -=dBottom;
+            bRight -=dRight;
+            bLeft -=dLeft;
+          } else if (dy < 0) {
+            bTop +=dTop;
+            bBottom +=dBottom;
+            bRight +=dRight;
+            bLeft +=dLeft;
+          }
+        }
 				draw();
 				ev.preventDefault();
 
@@ -333,9 +365,6 @@
 				}
 				draw();
 			});
-
-			
-
-		</script>
+    </script>
 </body>
 </html>
